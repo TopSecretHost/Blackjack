@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Enhanced Blackjack Game</title>
+    <style>
+        /* General Styles */
+        body {
+            background-color: #004d00;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        h1 {
+            padding: 20px 0;
+            text-align: center;
+            margin: 0;
+            background-color: #006600;
+            border-bottom: 2px solid #009900;
+        }
+        #gameArea {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #007700;
+            border-radius: 10px;
+            box-shadow: 0 0 10px #000;
+        }
+        #chips {
+            font-size: 24px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        #betArea {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #betArea input {
+            width: 100px;
+            padding: 5px;
+            font-size: 18px;
+            border-radius: 5px;
+            border: 1px solid #009900;
+            text-align: center;
+        }
+        #betArea button {
+            margin-left: 10px;
+        }
+        #dealerArea, #playerArea {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        #dealerCards, #playerHands {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        /* Hand Styles */
+        .hand {
+            background-color: #006600;
+            border: 2px solid #009900;
+            border-radius: 10px;
+            padding: 10px;
+            margin: 10px;
+            position: relative;
+            flex: 1 1 250px;
+            max-width: 300px;
+            box-shadow: 0 0 5px #000;
+        }
+        .hand.active {
+            border-color: gold;
+            box-shadow: 0 0 10px gold;
+        }
+        .hand h3 {
+            margin-top: 0;
+            font-size: 20px;
+        }
+        /* Card Styles */
+        .card {
+            width: 80px;
+            height: 120px;
+            margin: 5px;
+            background-color: #fff;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.5);
+            transition: transform 0.2s;
+            /* Added text color */
+            color: #000;
+        }
+        .card:hover {
+            transform: scale(1.05);
+        }
+
+        .card .card-value {
+            position: absolute;
+            font-size: 24px;
+            font-weight: bold;
+            line-height: 1;
+            /* Set default text color for card values */
+            color: #000;
+        }
+        .card.red .card-value {
+            color: red;
+        }
+        .card .card-value.top {
+            top: 5px;
+            left: 5px;
+        }
+        .card .card-value.bottom {
+            bottom: 5px;
+            right: 5px;
+            transform: rotate(180deg);
+        }
+        .card .suit {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            /* Set default text color for suit symbols */
+            color: #000;
+        }
+        .card.red .suit {
+            color: red;
+        }
+        /* Hidden Card */
+        .hidden-card {
+            background-color: #444;
+        }
+        /* Button Styles */
+        #controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        #controls button {
+            background-color: #009900;
+            color: #fff;
+            border: none;
+            padding: 15px 20px;
+            margin: 5px;
+            font-size: 18px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        #controls button:hover {
+            background-color: #00cc00;
+        }
+        #controls button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+        /* Message and History */
+        #message {
+            font-size: 24px;
+            text-align: center;
+            margin: 20px;
+        }
+        #history {
+            text-align: center;
+            font-size: 18px;
+        }
+        #history p {
+            margin: 5px 0;
+        }
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .card {
+                width: 60px;
+                height: 90px;
+            }
+            .card .card-value {
+                font-size: 18px;
+            }
+            .card .suit {
+                font-size: 36px;
+            }
+            #controls button {
+                padding: 10px 15px;
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Blackjack</h1>
+    <div id="gameArea">
+        <div id="chips">Chips: $<span id="chipCount">1000</span></div>
+        <div id="betArea">
+            <label for="betAmount">Bet Amount: $</label>
+            <input type="number" id="betAmount" value="100" min="1" max="1000" step="1">
+            <button id="placeBetButton">Place Bet</button>
+        </div>
+        <div id="dealerArea">
+            <h2>Dealer's Hand (<span id="dealerScore">0</span>)</h2>
+            <div id="dealerCards"></div>
+        </div>
+        <div id="playerArea">
+            <h2>Your Hands</h2>
+            <div id="playerHands"></div>
+        </div>
+        <div id="controls">
+            <button id="hitButton" disabled>Hit</button>
+            <button id="standButton" disabled>Stand</button>
+            <button id="doubleDownButton" disabled>Double Down</button>
+            <button id="splitButton" disabled>Split</button>
+            <button id="insuranceButton" disabled>Insurance</button>
+            <button id="surrenderButton" disabled>Surrender</button>
+            <button id="newGameButton" style="display:none;">Next Round</button>
+        </div>
+        <div id="message"></div>
+        <div id="history">
+            <p>Wins: <span id="wins">0</span></p>
+            <p>Losses: <span id="losses">0</span></p>
+            <p>Draws: <span id="draws">0</span></p>
+        </div>
+    </div>
+
+    <script>
+        // Game variables
+        let deck = [];
+        let dealerHand = [];
+        let gameOver = false;
+        let playerStand = false;
+        let playerChips = 1000;
+        let currentBet = 0;
+        let wins = 0;
+        let losses = 0;
+        let draws = 0;
+        let canDoubleDown = true;
+        let numDecks = 6;
+        let hands = [];
+        let bets = [];
+        let currentHandIndex = 0;
+        let insuranceBet = 0;
+
+        // Initialize game
+        function initGame() {
+            deck = createDeck(numDecks);
+            shuffleDeck(deck);
+            dealerHand = [];
+            gameOver = false;
+            playerStand = false;
+            canDoubleDown = true;
+            hands = [];
+            bets = [];
+            currentHandIndex = 0;
+            insuranceBet = 0;
+            document.getElementById('message').innerText = '';
+            document.getElementById('hitButton').disabled = true;
+            document.getElementById('standButton').disabled = true;
+            document.getElementById('doubleDownButton').disabled = true;
+            document.getElementById('splitButton').disabled = true;
+            document.getElementById('insuranceButton').disabled = true;
+            document.getElementById('surrenderButton').disabled = true;
+            document.getElementById('newGameButton').style.display = 'none';
+            document.getElementById('betAmount').disabled = false;
+            document.getElementById('placeBetButton').disabled = false;
+            updateChips();
+            updateHistory();
+            updateUI();
+        }
+
+        // Create a deck of cards
+        function createDeck(numDecks = 6) {
+            const suits = ['spades', 'hearts', 'clubs', 'diamonds'];
+            const values = [
+                'A', '2', '3', '4', '5', '6', '7',
+                '8', '9', '10', 'J', 'Q', 'K'
+            ];
+            let deck = [];
+            for (let d = 0; d < numDecks; d++) {
+                for (let suit of suits) {
+                    for (let value of values) {
+                        deck.push({ suit, value });
+                    }
+                }
+            }
+            return deck;
+        }
+
+        // Shuffle the deck
+        function shuffleDeck(deck) {
+            for (let i = 0; i < deck.length; i++) {
+                let swapIdx = Math.floor(Math.random() * deck.length);
+                [deck[i], deck[swapIdx]] = [deck[swapIdx], deck[i]];
+            }
+        }
+
+        // Draw a card from the deck
+        function drawCard() {
+            if (deck.length === 0) {
+                deck = createDeck(numDecks);
+                shuffleDeck(deck);
+                alert('Deck reshuffled.');
+            }
+            return deck.shift();
+        }
+
+        // Get the value of a hand
+        function getHandValue(hand) {
+            let value = 0;
+            let aceCount = 0;
+            for (let card of hand) {
+                if (card.value === 'A') {
+                    aceCount++;
+                    value += 11;
+                } else if (['K', 'Q', 'J'].includes(card.value)) {
+                    value += 10;
+                } else {
+                    value += parseInt(card.value);
+                }
+            }
+            while (value > 21 && aceCount > 0) {
+                value -= 10;
+                aceCount--;
+            }
+            return value;
+        }
+
+        // Update the UI
+        function updateUI() {
+            // Update player hands
+            const playerHandsDiv = document.getElementById('playerHands');
+            playerHandsDiv.innerHTML = '';
+            for (let i = 0; i < hands.length; i++) {
+                let handDiv = document.createElement('div');
+                handDiv.className = 'hand';
+                if (i === currentHandIndex) {
+                    handDiv.classList.add('active');
+                }
+                let handTitle = document.createElement('h3');
+                handTitle.innerText = `Hand ${i + 1} (${getHandValue(hands[i])})`;
+                handDiv.appendChild(handTitle);
+
+                for (let card of hands[i]) {
+                    let cardDiv = createCardElement(card);
+                    handDiv.appendChild(cardDiv);
+                }
+                playerHandsDiv.appendChild(handDiv);
+            }
+
+            // Update dealer hand
+            const dealerCardsDiv = document.getElementById('dealerCards');
+            dealerCardsDiv.innerHTML = '';
+            for (let i = 0; i < dealerHand.length; i++) {
+                let cardDiv;
+                if (i === 0 && !gameOver && !playerStand) {
+                    cardDiv = createCardBackElement();
+                } else {
+                    cardDiv = createCardElement(dealerHand[i]);
+                }
+                dealerCardsDiv.appendChild(cardDiv);
+            }
+            if (gameOver || playerStand) {
+                document.getElementById('dealerScore').innerText = getHandValue(dealerHand);
+            } else {
+                document.getElementById('dealerScore').innerText = '?';
+            }
+        }
+
+        // Create card element
+        function createCardElement(card) {
+            let cardDiv = document.createElement('div');
+            cardDiv.className = 'card';
+            if (card.suit === 'hearts' || card.suit === 'diamonds') {
+                cardDiv.classList.add('red');
+            }
+            let topValue = document.createElement('div');
+            topValue.className = 'card-value top';
+            topValue.innerText = card.value;
+            let bottomValue = document.createElement('div');
+            bottomValue.className = 'card-value bottom';
+            bottomValue.innerText = card.value;
+            let suitDiv = document.createElement('div');
+            suitDiv.className = 'suit';
+            suitDiv.innerHTML = getSuitSymbol(card.suit);
+            cardDiv.appendChild(topValue);
+            cardDiv.appendChild(bottomValue);
+            cardDiv.appendChild(suitDiv);
+            return cardDiv;
+        }
+
+        // Create card back element
+        function createCardBackElement() {
+            let cardDiv = document.createElement('div');
+            cardDiv.className = 'card hidden-card';
+            return cardDiv;
+        }
+
+        // Get suit symbol
+        function getSuitSymbol(suit) {
+            switch (suit) {
+                case 'spades':
+                    return '&spades;';
+                case 'hearts':
+                    return '&hearts;';
+                case 'clubs':
+                    return '&clubs;';
+                case 'diamonds':
+                    return '&diams;';
+                default:
+                    return suit;
+            }
+        }
+
+        // Update chips display
+        function updateChips() {
+            document.getElementById('chipCount').innerText = playerChips;
+        }
+
+        // Update game history
+        function updateHistory() {
+            document.getElementById('wins').innerText = wins;
+            document.getElementById('losses').innerText = losses;
+            document.getElementById('draws').innerText = draws;
+        }
+
+        // Check for end of game
+        function checkForEndOfGame() {
+            const currentHand = hands[currentHandIndex];
+            let playerScore = getHandValue(currentHand);
+
+            if (playerScore > 21) {
+                // Player busts
+                document.getElementById('message').innerText = `Hand ${currentHandIndex + 1}: You busted!`;
+                moveToNextHand();
+                return;
+            } else if (playerStand) {
+                document.getElementById('message').innerText = `Hand ${currentHandIndex + 1}: You stand.`;
+                moveToNextHand();
+                return;
+            }
+
+            updateUI();
+        }
+
+        // Move to next hand or proceed to dealer's turn
+        function moveToNextHand() {
+            if (currentHandIndex < hands.length - 1) {
+                currentHandIndex++;
+                canDoubleDown = true;
+                playerStand = false;
+                document.getElementById('doubleDownButton').disabled = false;
+                document.getElementById('hitButton').disabled = false;
+                document.getElementById('standButton').disabled = false;
+                document.getElementById('splitButton').disabled = false;
+                updateUI();
+                checkForBlackjack(); // Check for Blackjack on the new hand
+            } else {
+                // All hands played, proceed to dealer's turn
+                playDealerHand();
+            }
+        }
+
+        // Dealer plays their hand
+        function playDealerHand() {
+            let dealerScore = getHandValue(dealerHand);
+            while (dealerScore < 17 || (dealerScore === 17 && hasSoft17(dealerHand))) {
+                dealerHand.push(drawCard());
+                dealerScore = getHandValue(dealerHand);
+            }
+            gameOver = true;
+            updateUI();
+            evaluateHands();
+        }
+
+        // Evaluate each hand against dealer's hand
+        function evaluateHands() {
+            let dealerScore = getHandValue(dealerHand);
+            let message = '';
+
+            for (let i = 0; i < hands.length; i++) {
+                let playerScore = getHandValue(hands[i]);
+                let bet = bets[i];
+
+                if (playerScore > 21) {
+                    // Player busts
+                    losses++;
+                    playerChips -= bet;
+                    message += `Hand ${i + 1}: You busted! Dealer wins.\n`;
+                } else if (dealerScore > 21) {
+                    // Dealer busts
+                    wins++;
+                    playerChips += bet;
+                    message += `Hand ${i + 1}: Dealer busted! You win!\n`;
+                } else if (dealerScore === playerScore) {
+                    // Push
+                    draws++;
+                    message += `Hand ${i + 1}: Push. It's a tie.\n`;
+                } else if (playerScore > dealerScore) {
+                    // Player wins
+                    wins++;
+                    playerChips += bet;
+                    message += `Hand ${i + 1}: You win!\n`;
+                } else {
+                    // Dealer wins
+                    losses++;
+                    playerChips -= bet;
+                    message += `Hand ${i + 1}: Dealer wins.\n`;
+                }
+            }
+
+            document.getElementById('message').innerText = message.trim();
+            updateChips();
+            updateHistory();
+            document.getElementById('hitButton').disabled = true;
+            document.getElementById('standButton').disabled = true;
+            document.getElementById('doubleDownButton').disabled = true;
+            document.getElementById('splitButton').disabled = true;
+            document.getElementById('insuranceButton').disabled = true;
+            document.getElementById('surrenderButton').disabled = true;
+            document.getElementById('newGameButton').style.display = 'inline-block';
+        }
+
+        // Check for Blackjack
+        function checkForBlackjack() {
+            const currentHand = hands[currentHandIndex];
+            let playerScore = getHandValue(currentHand);
+            let dealerScore = getHandValue(dealerHand);
+
+            let playerHasBlackjack = playerScore === 21 && currentHand.length === 2;
+            let dealerHasBlackjack = dealerScore === 21 && dealerHand.length === 2;
+
+            if (playerHasBlackjack || dealerHasBlackjack) {
+                gameOver = true;
+                checkInsurance();
+
+                if (playerHasBlackjack && dealerHasBlackjack) {
+                    // Push
+                    draws++;
+                    document.getElementById('message').innerText = 'Both you and the dealer have Blackjack! Push.';
+                } else if (playerHasBlackjack) {
+                    // Player wins with Blackjack
+                    wins++;
+                    playerChips += bets[currentHandIndex] * 1.5; // Blackjack pays 3:2
+                    document.getElementById('message').innerText = `Hand ${currentHandIndex + 1}: Blackjack! You win 3:2!`;
+                } else {
+                    // Dealer wins with Blackjack
+                    losses++;
+                    playerChips -= bets[currentHandIndex];
+                    document.getElementById('message').innerText = 'Dealer has Blackjack. You lose.';
+                }
+                updateChips();
+                updateHistory();
+                updateUI();
+                document.getElementById('hitButton').disabled = true;
+                document.getElementById('standButton').disabled = true;
+                document.getElementById('doubleDownButton').disabled = true;
+                document.getElementById('splitButton').disabled = true;
+                document.getElementById('insuranceButton').disabled = true;
+                document.getElementById('surrenderButton').disabled = true;
+                document.getElementById('newGameButton').style.display = 'inline-block';
+            } else {
+                offerInsurance();
+                checkForSplit();
+                document.getElementById('surrenderButton').disabled = false;
+            }
+        }
+
+        // Check if dealer has soft 17
+        function hasSoft17(hand) {
+            let value = getHandValue(hand);
+            let containsAce = hand.some(card => card.value === 'A');
+            return value === 17 && containsAce;
+        }
+
+        // Offer insurance
+        function offerInsurance() {
+            if (dealerHand[0].value === 'A') {
+                document.getElementById('insuranceButton').disabled = false;
+            }
+        }
+
+        // Check insurance
+        function checkInsurance() {
+            let dealerScore = getHandValue(dealerHand);
+            let dealerHasBlackjack = dealerScore === 21 && dealerHand.length === 2;
+
+            if (dealerHasBlackjack && insuranceBet > 0) {
+                // Insurance pays 2:1
+                playerChips += insuranceBet * 2;
+                updateChips();
+                document.getElementById('message').innerText += ' Insurance pays out.';
+            } else if (insuranceBet > 0) {
+                document.getElementById('message').innerText += ' Insurance lost.';
+            }
+            insuranceBet = 0;
+        }
+
+        // Check for split
+        function checkForSplit() {
+            const currentHand = hands[currentHandIndex];
+            if (currentHand.length === 2 && getCardValue(currentHand[0]) === getCardValue(currentHand[1])) {
+                document.getElementById('splitButton').disabled = false;
+            } else {
+                document.getElementById('splitButton').disabled = true;
+            }
+        }
+
+        // Get card value
+        function getCardValue(card) {
+            if (card.value === 'A') {
+                return 11;
+            } else if (['K', 'Q', 'J'].includes(card.value)) {
+                return 10;
+            } else {
+                return parseInt(card.value);
+            }
+        }
+
+        // Event listeners for buttons
+        document.getElementById('placeBetButton').addEventListener('click', function() {
+            currentBet = parseInt(document.getElementById('betAmount').value);
+            if (currentBet > playerChips || currentBet <= 0) {
+                alert('Invalid bet amount.');
+                return;
+            }
+            // Disable bet controls
+            document.getElementById('betAmount').disabled = true;
+            document.getElementById('placeBetButton').disabled = true;
+
+            // Deal initial hands
+            let playerHand = [drawCard(), drawCard()];
+            hands = [playerHand];
+            bets = [currentBet];
+            dealerHand = [drawCard(), drawCard()];
+            document.getElementById('hitButton').disabled = false;
+            document.getElementById('standButton').disabled = false;
+            document.getElementById('doubleDownButton').disabled = false;
+            document.getElementById('surrenderButton').disabled = false;
+            updateUI();
+            checkForBlackjack();
+        });
+
+        document.getElementById('hitButton').addEventListener('click', function() {
+            const currentHand = hands[currentHandIndex];
+            currentHand.push(drawCard());
+            canDoubleDown = false;
+            document.getElementById('doubleDownButton').disabled = true;
+            document.getElementById('surrenderButton').disabled = true;
+            document.getElementById('insuranceButton').disabled = true;
+            updateUI();
+            checkForEndOfGame();
+        });
+
+        document.getElementById('standButton').addEventListener('click', function() {
+            playerStand = true;
+            canDoubleDown = false;
+            document.getElementById('doubleDownButton').disabled = true;
+            document.getElementById('surrenderButton').disabled = true;
+            document.getElementById('insuranceButton').disabled = true;
+            checkForEndOfGame();
+        });
+
+        document.getElementById('doubleDownButton').addEventListener('click', function() {
+            if (!canDoubleDown || playerChips < bets[currentHandIndex]) {
+                alert('Cannot double down.');
+                return;
+            }
+            playerChips -= bets[currentHandIndex];
+            bets[currentHandIndex] *= 2;
+            const currentHand = hands[currentHandIndex];
+            currentHand.push(drawCard());
+            playerStand = true;
+            canDoubleDown = false;
+            document.getElementById('doubleDownButton').disabled = true;
+            document.getElementById('surrenderButton').disabled = true;
+            document.getElementById('insuranceButton').disabled = true;
+            updateUI();
+            checkForEndOfGame();
+        });
+
+        document.getElementById('splitButton').addEventListener('click', function() {
+            if (playerChips < bets[currentHandIndex]) {
+                alert('Not enough chips to split.');
+                return;
+            }
+            // Deduct additional bet for the split hand
+            playerChips -= bets[currentHandIndex];
+            updateChips();
+
+            // Split the hand
+            const currentHand = hands[currentHandIndex];
+            let firstCard = currentHand[0];
+            let secondCard = currentHand[1];
+
+            // Replace the current hand with the first new hand
+            hands[currentHandIndex] = [firstCard, drawCard()];
+            bets[currentHandIndex] = bets[currentHandIndex]; // Bet remains the same
+
+            // Add the second new hand
+            hands.push([secondCard, drawCard()]);
+            bets.push(bets[currentHandIndex]); // Bet for new hand
+
+            // Update UI
+            document.getElementById('splitButton').disabled = true;
+            document.getElementById('surrenderButton').disabled = true;
+            document.getElementById('insuranceButton').disabled = true;
+            updateUI();
+            checkForEndOfGame();
+        });
+
+        document.getElementById('insuranceButton').addEventListener('click', function() {
+            if (playerChips < bets[currentHandIndex] / 2) {
+                alert('Not enough chips for insurance.');
+                return;
+            }
+            insuranceBet = bets[currentHandIndex] / 2;
+            playerChips -= insuranceBet;
+            updateChips();
+            document.getElementById('insuranceButton').disabled = true;
+        });
+
+        document.getElementById('surrenderButton').addEventListener('click', function() {
+            playerChips -= bets[currentHandIndex] / 2;
+            losses++;
+            updateChips();
+            updateHistory();
+            document.getElementById('message').innerText = `Hand ${currentHandIndex + 1}: You surrendered. Half your bet is forfeited.`;
+            moveToNextHand();
+        });
+
+        document.getElementById('newGameButton').addEventListener('click', function() {
+            if (playerChips <= 0) {
+                alert('You are out of chips! Game over.');
+                initGame();
+                document.getElementById('betAmount').disabled = true;
+                document.getElementById('placeBetButton').disabled = true;
+                document.getElementById('message').innerText = 'You have no more chips. Please refresh the page to start over.';
+                return;
+            }
+            initGame();
+        });
+
+        // Start the game
+        initGame();
+    </script>
+</body>
+</html>
